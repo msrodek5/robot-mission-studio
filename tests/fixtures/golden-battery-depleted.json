@@ -1,0 +1,137 @@
+{
+  "name": "battery-depleted",
+  "description": "The same round trip started at 9% battery. Two steps succeed, then the robot strands itself two cells into the return leg.",
+  "layout": {
+    "width": 8,
+    "height": 6,
+    "obstacles": [
+      {
+        "x": 3,
+        "y": 0
+      },
+      {
+        "x": 3,
+        "y": 1
+      },
+      {
+        "x": 3,
+        "y": 2
+      },
+      {
+        "x": 3,
+        "y": 3
+      }
+    ],
+    "stations": [
+      {
+        "id": "dock-1",
+        "name": "Inbound Dock",
+        "cell": {
+          "x": 0,
+          "y": 0
+        },
+        "kind": "dock"
+      },
+      {
+        "id": "shelf-a",
+        "name": "Shelf A",
+        "cell": {
+          "x": 6,
+          "y": 1
+        },
+        "kind": "shelf",
+        "items": [
+          "widget"
+        ]
+      },
+      {
+        "id": "charger-1",
+        "name": "Charge Pad",
+        "cell": {
+          "x": 7,
+          "y": 5
+        },
+        "kind": "charger"
+      }
+    ],
+    "start": {
+      "x": 0,
+      "y": 0
+    }
+  },
+  "mission": {
+    "steps": [
+      {
+        "op": "MOVE_TO",
+        "stationId": "shelf-a"
+      },
+      {
+        "op": "PICK",
+        "stationId": "shelf-a",
+        "item": "widget"
+      },
+      {
+        "op": "MOVE_TO",
+        "stationId": "dock-1"
+      },
+      {
+        "op": "PLACE",
+        "stationId": "dock-1",
+        "item": "widget"
+      }
+    ]
+  },
+  "options": {
+    "seed": 42,
+    "batteryStart": 9
+  },
+  "expected": {
+    "status": "failed",
+    "ticks": 17,
+    "distance": 15,
+    "batteryEnd": 0.5,
+    "log": [
+      {
+        "tick": 13,
+        "stepIndex": 0,
+        "op": "MOVE_TO",
+        "outcome": "ok",
+        "message": "Moved 13 cell(s) to \"Shelf A\" at (6,1).",
+        "pos": {
+          "x": 6,
+          "y": 1
+        },
+        "battery": 2.5
+      },
+      {
+        "tick": 15,
+        "stepIndex": 1,
+        "op": "PICK",
+        "outcome": "ok",
+        "message": "Picked \"widget\" at \"Shelf A\".",
+        "pos": {
+          "x": 6,
+          "y": 1
+        },
+        "battery": 1.5
+      },
+      {
+        "tick": 17,
+        "stepIndex": 2,
+        "op": "MOVE_TO",
+        "outcome": "failed",
+        "message": "Battery ran out 11 cell(s) short of \"Inbound Dock\".",
+        "pos": {
+          "x": 4,
+          "y": 1
+        },
+        "battery": 0.5
+      }
+    ],
+    "failure": {
+      "stepIndex": 2,
+      "code": "BATTERY_DEPLETED",
+      "detail": "Battery ran out 11 cell(s) short of \"Inbound Dock\"."
+    }
+  }
+}

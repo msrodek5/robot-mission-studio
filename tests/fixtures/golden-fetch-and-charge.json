@@ -1,0 +1,160 @@
+{
+  "name": "fetch-and-charge",
+  "description": "Round trip around an obstacle wall: collect a widget from Shelf A, drop it at the dock, then top the battery back up to 100%.",
+  "layout": {
+    "width": 8,
+    "height": 6,
+    "obstacles": [
+      {
+        "x": 3,
+        "y": 0
+      },
+      {
+        "x": 3,
+        "y": 1
+      },
+      {
+        "x": 3,
+        "y": 2
+      },
+      {
+        "x": 3,
+        "y": 3
+      }
+    ],
+    "stations": [
+      {
+        "id": "dock-1",
+        "name": "Inbound Dock",
+        "cell": {
+          "x": 0,
+          "y": 0
+        },
+        "kind": "dock"
+      },
+      {
+        "id": "shelf-a",
+        "name": "Shelf A",
+        "cell": {
+          "x": 6,
+          "y": 1
+        },
+        "kind": "shelf",
+        "items": [
+          "widget"
+        ]
+      },
+      {
+        "id": "charger-1",
+        "name": "Charge Pad",
+        "cell": {
+          "x": 7,
+          "y": 5
+        },
+        "kind": "charger"
+      }
+    ],
+    "start": {
+      "x": 0,
+      "y": 0
+    }
+  },
+  "mission": {
+    "steps": [
+      {
+        "op": "MOVE_TO",
+        "stationId": "shelf-a"
+      },
+      {
+        "op": "PICK",
+        "stationId": "shelf-a",
+        "item": "widget"
+      },
+      {
+        "op": "MOVE_TO",
+        "stationId": "dock-1"
+      },
+      {
+        "op": "PLACE",
+        "stationId": "dock-1",
+        "item": "widget"
+      },
+      {
+        "op": "CHARGE",
+        "stationId": "charger-1",
+        "toPercent": 100
+      }
+    ]
+  },
+  "options": {
+    "seed": 42
+  },
+  "expected": {
+    "status": "success",
+    "ticks": 47,
+    "distance": 38,
+    "batteryEnd": 100,
+    "log": [
+      {
+        "tick": 13,
+        "stepIndex": 0,
+        "op": "MOVE_TO",
+        "outcome": "ok",
+        "message": "Moved 13 cell(s) to \"Shelf A\" at (6,1).",
+        "pos": {
+          "x": 6,
+          "y": 1
+        },
+        "battery": 93.5
+      },
+      {
+        "tick": 15,
+        "stepIndex": 1,
+        "op": "PICK",
+        "outcome": "ok",
+        "message": "Picked \"widget\" at \"Shelf A\".",
+        "pos": {
+          "x": 6,
+          "y": 1
+        },
+        "battery": 92.5
+      },
+      {
+        "tick": 28,
+        "stepIndex": 2,
+        "op": "MOVE_TO",
+        "outcome": "ok",
+        "message": "Moved 13 cell(s) to \"Inbound Dock\" at (0,0).",
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "battery": 86
+      },
+      {
+        "tick": 30,
+        "stepIndex": 3,
+        "op": "PLACE",
+        "outcome": "ok",
+        "message": "Placed \"widget\" at \"Inbound Dock\".",
+        "pos": {
+          "x": 0,
+          "y": 0
+        },
+        "battery": 85
+      },
+      {
+        "tick": 47,
+        "stepIndex": 4,
+        "op": "CHARGE",
+        "outcome": "ok",
+        "message": "Charged to 100% at \"Charge Pad\" in 5 tick(s).",
+        "pos": {
+          "x": 7,
+          "y": 5
+        },
+        "battery": 100
+      }
+    ]
+  }
+}
