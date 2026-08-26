@@ -1,0 +1,27 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+export const prerender = false;
+
+const { supabase } = Astro.locals;
+
+// POST only. A GET logout can be triggered by any image tag or link prefetch,
+// which signs people out at random; the GET branch just renders the button.
+if (Astro.request.method === 'POST') {
+  await supabase.auth.signOut();
+
+  return Astro.redirect('/login', 303);
+}
+---
+
+<Layout title="Log out — Robot Mission Studio">
+  <main class="mx-auto flex min-h-full max-w-sm flex-col justify-center gap-6 px-6 py-16">
+    <h1 class="text-2xl font-semibold tracking-tight">Log out</h1>
+
+    <form method="post">
+      <button type="submit" class="rounded bg-slate-700 px-3 py-2 font-medium">
+        Log out
+      </button>
+    </form>
+  </main>
+</Layout>

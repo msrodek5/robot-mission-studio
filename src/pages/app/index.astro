@@ -1,0 +1,33 @@
+---
+import Layout from '../../layouts/Layout.astro';
+
+export const prerender = false;
+
+const { user } = Astro.locals;
+
+// Middleware already guarantees a user on /app/*. Re-checking keeps the type
+// honest without a non-null assertion, and means a middleware regression fails
+// closed rather than rendering a page with no owner.
+if (!user) return Astro.redirect('/login', 302);
+---
+
+<Layout title="Robot Mission Studio">
+  <main class="mx-auto flex min-h-full max-w-2xl flex-col justify-center gap-6 px-6 py-16">
+    <div>
+      <p class="text-sm font-medium tracking-widest text-cyan-400 uppercase">Milestone 2</p>
+      <h1 class="mt-2 text-3xl font-semibold tracking-tight">Signed in</h1>
+      <p class="mt-2 text-slate-400">{user.email}</p>
+    </div>
+
+    <p class="text-sm text-slate-500">
+      Schema, row-level security, and auth are in place. The layout editor
+      arrives in M3.
+    </p>
+
+    <form method="post" action="/logout">
+      <button type="submit" class="rounded bg-slate-700 px-3 py-2 text-sm font-medium">
+        Log out
+      </button>
+    </form>
+  </main>
+</Layout>

@@ -1,0 +1,84 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { safeRedirectTarget } from '../lib/safe-redirect';
+
+// Handles its own POST. Astro does not gate methods on page routes, so the form
+// and its handler stay in one file instead of needing a separate endpoint.
+export const prerender = false;
+
+const { supabase } = Astro.locals;
+
+// Where to land after signing in. Middleware puts the blocked path here when it
+// bounces an anonymous request off /app/*.
+const redirectTo = safeRedirectTarget(Astro.url.searchParams.get('redirect'), '/app');
+
+let error: string | null = null;
+let email = '';
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  email = String(form.get('email') ?? '').trim();
+  const password = String(form.get('password') ?? '');
+
+  if (!email || !password) {
+    error = 'Email and password are both required.';
+  } else {
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (signInError) {
+      // Supabase returns the same "Invalid login credentials" for a wrong
+      // password and an unknown email, which is what we want: no account
+      // enumeration.
+      error = signInError.message;
+    } else {
+      // 303 so the browser follows with GET rather than replaying the POST.
+      return Astro.redirect(redirectTo, 303);
+    }
+  }
+}
+---
+
+<Layout title="Log in — Robot Mission Studio">
+  <main class="mx-auto flex min-h-full max-w-sm flex-col justify-center gap-6 px-6 py-16">
+    <h1 class="text-2xl font-semibold tracking-tight">Log in</h1>
+
+    {
+      error && (
+        <p class="rounded border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+          {error}
+        </p>
+      )
+    }
+
+    <form method="post" class="flex flex-col gap-4">
+      <label class="flex flex-col gap-1 text-sm">
+        Email
+        <input
+          type="email"
+          name="email"
+          value={email}
+          required
+          autocomplete="email"
+          class="rounded border border-slate-700 bg-slate-900 px-3 py-2"
+        />
+      </label>
+
+      <label class="flex flex-col gap-1 text-sm">
+        Password
+        <input
+          type="password"
+          name="password"
+          required
+          autocomplete="current-password"
+          class="rounded border border-slate-700 bg-slate-900 px-3 py-2"
+        />
+      </label>
+
+      <button type="submit" class="rounded bg-cyan-600 px-3 py-2 font-medium">Log in</button>
+    </form>
+
+    <p class="text-sm text-slate-400">
+      No account? <a href="/signup" class="text-cyan-400 underline">Sign up</a>
+    </p>
+  </main>
+</Layout>

@@ -21,6 +21,19 @@ export default defineConfig({
         access: 'secret',
         optional: true,
       }),
+
+      // Both are safe to expose: the anon key only reaches data that row-level
+      // security already permits. Declared `client` so M3's browser client can
+      // read them without a config change; server code imports the same
+      // `astro:env/client` module.
+      PUBLIC_SUPABASE_URL: envField.string({
+        context: 'client',
+        access: 'public',
+      }),
+      PUBLIC_SUPABASE_ANON_KEY: envField.string({
+        context: 'client',
+        access: 'public',
+      }),
     },
   },
 

@@ -1,0 +1,94 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+export const prerender = false;
+
+const { supabase } = Astro.locals;
+
+let error: string | null = null;
+let confirmationSent = false;
+let email = '';
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  email = String(form.get('email') ?? '').trim();
+  const password = String(form.get('password') ?? '');
+
+  if (!email || !password) {
+    error = 'Email and password are both required.';
+  } else {
+    const { data, error: signUpError } = await supabase.auth.signUp({ email, password });
+
+    if (signUpError) {
+      error = signUpError.message;
+    } else if (data.session) {
+      // Email confirmation is off, so the account is usable immediately.
+      return Astro.redirect('/app', 303);
+    } else {
+      // Confirmation is on: there is no session yet. Say so rather than
+      // redirecting to /app, which would only bounce straight back to /login.
+      confirmationSent = true;
+    }
+  }
+}
+---
+
+<Layout title="Sign up — Robot Mission Studio">
+  <main class="mx-auto flex min-h-full max-w-sm flex-col justify-center gap-6 px-6 py-16">
+    <h1 class="text-2xl font-semibold tracking-tight">Sign up</h1>
+
+    {
+      error && (
+        <p class="rounded border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+          {error}
+        </p>
+      )
+    }
+
+    {
+      confirmationSent ? (
+        <p class="rounded border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-sm text-cyan-200">
+          Check <strong>{email}</strong> for a confirmation link, then{' '}
+          <a href="/login" class="underline">
+            log in
+          </a>
+          .
+        </p>
+      ) : (
+        <form method="post" class="flex flex-col gap-4">
+          <label class="flex flex-col gap-1 text-sm">
+            Email
+            <input
+              type="email"
+              name="email"
+              value={email}
+              required
+              autocomplete="email"
+              class="rounded border border-slate-700 bg-slate-900 px-3 py-2"
+            />
+          </label>
+
+          <label class="flex flex-col gap-1 text-sm">
+            Password
+            <input
+              type="password"
+              name="password"
+              required
+              minlength="6"
+              autocomplete="new-password"
+              class="rounded border border-slate-700 bg-slate-900 px-3 py-2"
+            />
+          </label>
+
+          <button type="submit" class="rounded bg-cyan-600 px-3 py-2 font-medium">
+            Create account
+          </button>
+        </form>
+      )
+    }
+
+    <p class="text-sm text-slate-400">
+      Already have an account? <a href="/login" class="text-cyan-400 underline">Log in</a>
+    </p>
+  </main>
+</Layout>

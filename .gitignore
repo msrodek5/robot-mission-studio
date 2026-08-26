@@ -12,7 +12,6 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-
 # environment variables
 .env
 .env.production
@@ -33,4 +32,6 @@ pnpm-debug.log*
 /blob-report/
 /playwright/.cache/
 
-.vercel
+# vercel link writes .env.local (OIDC token)
+.env.local
+!.env.example
