@@ -1,11 +1,14 @@
 ---
 import { LayoutEditor } from '../../../components/layout-editor/LayoutEditor';
+import { RunHistory } from '../../../components/playback/RunHistory';
+import { RunLauncher } from '../../../components/playback/RunLauncher';
 import {
   LAYOUT_COLUMNS,
   isLayoutId,
   parseLayoutRow,
   toLayoutRecord,
 } from '../../../lib/layout/layout-api';
+import { RUN_COLUMNS, parseRunRow, toRunRecord } from '../../../lib/runs/run-api';
 import Layout from '../../../layouts/Layout.astro';
 
 export const prerender = false;
@@ -33,6 +36,35 @@ if (!data) {
 }
 
 const record = toLayoutRecord(parseLayoutRow(data));
+
+// Run history, server-rendered so it is in the first paint. `runs` has no
+// layout_id, so the layout's missions come first. No user filter on either
+// query: the select policies already scope them to this user.
+const { data: missionRows } = await supabase
+  .from('missions')
+  .select('id, name')
+  .eq('layout_id', record.id);
+
+const missions = (missionRows ?? []) as { id: string; name: string }[];
+const missionNameById = new Map(missions.map((mission) => [mission.id, mission.name]));
+
+const { data: runRows } =
+  missions.length === 0
+    ? { data: [] }
+    : await supabase
+        .from('runs')
+        .select(RUN_COLUMNS)
+        .in(
+          'mission_id',
+          missions.map((mission) => mission.id),
+        )
+        .order('created_at', { ascending: false });
+
+const runs = (runRows ?? []).map((row) => toRunRecord(parseRunRow(row)));
+
+const missionNames = Object.fromEntries(
+  runs.map((run) => [run.id, missionNameById.get(run.missionId) ?? 'Mission']),
+);
 ---
 
 <Layout title={`${record.name} — Robot Mission Studio`}>
@@ -46,5 +78,9 @@ const record = toLayoutRecord(parseLayoutRow(data));
     </div>
 
     <LayoutEditor record={record} client:load />
+
+    <RunLauncher record={record} client:load />
+
+    <RunHistory layoutId={record.id} runs={runs} missionNames={missionNames} />
   </main>
 </Layout>

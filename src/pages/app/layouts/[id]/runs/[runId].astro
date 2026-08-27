@@ -1,0 +1,58 @@
+---
+import { RunPlayback } from '../../../../../components/playback/RunPlayback';
+import { isLayoutId } from '../../../../../lib/layout/layout-api';
+import { isRunId, loadRunDetail } from '../../../../../lib/runs/run-api';
+import Layout from '../../../../../layouts/Layout.astro';
+
+export const prerender = false;
+
+const { supabase, user } = Astro.locals;
+
+if (!user) return Astro.redirect('/login', 302);
+
+// Malformed ids cannot name a row and would raise a Postgres uuid syntax error.
+if (!isLayoutId(Astro.params.id) || !isRunId(Astro.params.runId)) {
+  return new Response('Run not found', { status: 404 });
+}
+
+// Ownership is resolved here, not in the island: a run belonging to another user
+// is invisible under RLS, arrives as no row, and leaves as 404. The island's own
+// fetch of `/api/runs/:id` gets the same answer, so neither path is the only lock.
+const detail = await loadRunDetail(supabase, Astro.params.runId);
+
+if (detail === null) {
+  return new Response('Run not found', { status: 404 });
+}
+
+// A run reached through the wrong layout's URL is a 404 too, so the breadcrumb
+// below can never point somewhere the run did not come from.
+if (detail.layoutId !== Astro.params.id) {
+  return new Response('Run not found', { status: 404 });
+}
+
+const heading = detail.run.status === 'success' ? 'Successful run' : 'Failed run';
+---
+
+<Layout title={`${heading} — ${detail.layoutName} — Robot Mission Studio`}>
+  <main class="mx-auto flex min-h-full max-w-5xl flex-col gap-6 px-6 py-12">
+    <div class="flex items-baseline justify-between">
+      <a href={`/app/layouts/${detail.layoutId}`} class="text-sm text-cyan-400 underline">
+        &larr; {detail.layoutName}
+      </a>
+
+      <form method="post" action="/logout">
+        <button type="submit" class="rounded bg-slate-700 px-2 py-1 text-xs">Log out</button>
+      </form>
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <h1 class="text-2xl font-semibold tracking-tight">{detail.mission.name}</h1>
+      <p class="text-xs text-slate-500">
+        Seed {detail.run.seed} · frames are recomputed in the browser from layout + plan + seed,
+        never stored.
+      </p>
+    </div>
+
+    <RunPlayback runId={detail.run.id} client:load />
+  </main>
+</Layout>
