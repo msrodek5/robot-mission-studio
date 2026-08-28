@@ -42,10 +42,11 @@ const record = toLayoutRecord(parseLayoutRow(data));
 // query: the select policies already scope them to this user.
 const { data: missionRows } = await supabase
   .from('missions')
-  .select('id, name')
-  .eq('layout_id', record.id);
+  .select('id, name, source')
+  .eq('layout_id', record.id)
+  .order('created_at', { ascending: false });
 
-const missions = (missionRows ?? []) as { id: string; name: string }[];
+const missions = (missionRows ?? []) as { id: string; name: string; source: string }[];
 const missionNameById = new Map(missions.map((mission) => [mission.id, mission.name]));
 
 const { data: runRows } =
@@ -80,6 +81,41 @@ const missionNames = Object.fromEntries(
     <LayoutEditor record={record} client:load />
 
     <RunLauncher record={record} client:load />
+
+    <section class="flex flex-col gap-3 rounded border border-slate-700 px-4 py-3">
+      <div class="flex items-baseline justify-between">
+        <h2 class="text-sm font-semibold tracking-wide uppercase">Missions</h2>
+
+        <a
+          href={`/app/layouts/${record.id}/missions/new`}
+          class="rounded bg-cyan-600 px-3 py-1.5 text-sm font-medium"
+        >
+          Plan with AI
+        </a>
+      </div>
+
+      {
+        missions.length === 0 ? (
+          <p class="text-sm text-slate-400">
+            No missions yet. Describe one in plain English and the planner will draft the steps.
+          </p>
+        ) : (
+          <ul class="flex flex-col gap-1">
+            {missions.map((mission) => (
+              <li>
+                <a
+                  href={`/app/missions/${mission.id}`}
+                  class="flex items-baseline justify-between rounded px-2 py-1 text-sm hover:bg-slate-800"
+                >
+                  <span>{mission.name}</span>
+                  <span class="font-mono text-xs text-slate-500">{mission.source}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        )
+      }
+    </section>
 
     <RunHistory layoutId={record.id} runs={runs} missionNames={missionNames} />
   </main>

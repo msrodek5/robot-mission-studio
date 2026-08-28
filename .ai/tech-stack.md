@@ -32,13 +32,23 @@ Each choice below records *why*, *what it costs*, and *what would change my mind
 
 **What would change my mind.** Multi-tenant org-level authorisation with relationship-based rules would outgrow RLS quickly. Single-user ownership does not.
 
-## LLM — OpenRouter
+## LLM — Anthropic API (direct)
 
-**Why.** One API for model access, with the model pinned in an environment variable rather than hardcoded. Mission planning is a small structured-extraction task; it does not need a frontier model, and OpenRouter makes trying a cheaper one a config change.
+*Revised 06.09.2026. Originally OpenRouter — see "Superseded" below.*
 
-**Cost.** An extra hop, and provider-specific features aren't available. Neither matters for JSON-out prompting.
+**Why.** The planner's job is structured extraction: given a station list and a sentence, emit a conforming `Mission`. Anthropic's API supports schema-constrained output via tool definitions, so the schema is enforced at generation time rather than only validated after the fact. That removes most of the "model returned JSON wrapped in markdown fences" failure class outright. The first-party SDK is also properly typed, which matters in a codebase where the whole point is that types carry the domain.
 
-**Design note.** Model output is never trusted. Every response is parsed through a Zod schema, then passed through `validateMission()` for semantic checks, with a bounded repair loop between. The LLM proposes; the validator disposes.
+Mission planning does not need a frontier model — the model string stays pinned in `ANTHROPIC_MODEL` so the choice is a config change, and a small fast model is the default.
+
+**Cost.** Single-provider coupling. Switching models is now a code change rather than an env change, and an Anthropic outage has no fallback path. Both are acceptable for a project with a three-week life and no availability requirement. Real production systems would want the indirection back.
+
+**Design note — unchanged, and this is the important part.** Model output is never trusted, regardless of provider. Every response is parsed through a Zod schema, then passed through `validateMission()` for semantic checks, with a bounded repair loop (max 2 attempts) between. The LLM proposes; the validator disposes.
+
+Schema-constrained output reduces *schema* failures. It does nothing for *semantic* ones — a plan that places an item before picking it up is perfectly well-typed and completely wrong. The semantic gate is what actually protects the product, and it survives any provider change.
+
+### Superseded: OpenRouter
+
+The original choice, for one-API access across providers and model swapping by environment variable. Dropped because the indirection was buying optionality this project will never exercise, at the cost of weaker typing and no access to schema-constrained generation. The tradeoff would invert for anything long-lived.
 
 ## Simulation core — plain TypeScript, zero dependencies
 

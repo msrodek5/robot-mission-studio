@@ -1,0 +1,41 @@
+{
+  "id": "msg_test",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-haiku-4-5",
+  "content": [
+    {
+      "type": "tool_use",
+      "id": "toolu_test",
+      "name": "emit_mission",
+      "input": {
+        "steps": [
+          {
+            "op": "MOVE_TO",
+            "stationId": "shelf-A"
+          },
+          {
+            "op": "PICK",
+            "stationId": "shelf-A",
+            "item": "crate"
+          },
+          {
+            "op": "MOVE_TO",
+            "stationId": "dock-1"
+          },
+          {
+            "op": "PLACE",
+            "stationId": "dock-1",
+            "item": "crate"
+          }
+        ]
+      }
+    }
+  ],
+  "stop_reason": "tool_use",
+  "stop_sequence": null,
+  "usage": {
+    "input_tokens": 512,
+    "output_tokens": 90
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "id": "msg_test",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-haiku-4-5",
+  "content": [
+    {
+      "type": "text",
+      "text": "Here is the plan:\n\n```json\n{\n  \"steps\": [\n    {\n      \"op\": \"MOVE_TO\",\n      \"stationId\": \"shelf-1\"\n    },\n    {\n      \"op\": \"PICK\",\n      \"stationId\": \"shelf-1\",\n      \"item\": \"bolt\"\n    },\n    {\n      \"op\": \"MOVE_TO\",\n      \"stationId\": \"dock-1\"\n    },\n    {\n      \"op\": \"PLACE\",\n      \"stationId\": \"dock-1\",\n      \"item\": \"bolt\"\n    }\n  ]\n}\n```\n"
+    }
+  ],
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "usage": {
+    "input_tokens": 512,
+    "output_tokens": 96
+  }
+}

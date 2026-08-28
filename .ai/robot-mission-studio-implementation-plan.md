@@ -1,7 +1,7 @@
 # Robot Mission Studio — Implementation Plan
 
 **Capstone project, 10xDevs 3.0**
-Status: draft v1 · Owner: Mariusz
+Status: v1 · Owner: Mariusz · Ship 15.09.2026, deadline 16.09.2026
 
 ---
 
@@ -15,31 +15,10 @@ This is the whole risk of this project. Not A*, not the LLM, not RLS.
 
 ## 1. Product definition
 
-**One-liner:** Describe a warehouse robot mission in plain language, watch it run in a deterministic simulator, and get an AI explanation when it fails.
+Lives in [`.ai/prd.md`](./prd.md) — problem, personas, user stories US-1..US-7 with acceptance criteria, failure classes, and the binding non-goals list.
 
-**Problem:** People who specify robot missions (ops engineers, integrators, sales engineers) can't validate a task sequence without hardware or a heavyweight simulator. Mistakes — unreachable stations, missing pick before place, battery exhaustion — surface late.
-
-**Solution:** A browser tool where you draw a floor layout, write the mission as a sentence, and get a validated, executable plan with a visual run and a failure postmortem.
-
-### Core user stories (v1 scope)
-
-| # | As a user I can… | Done when |
-|---|---|---|
-| US-1 | Sign up / log in | Session persists, my data is mine only |
-| US-2 | Create a grid layout with obstacles and named stations | Saved to DB, reloads correctly |
-| US-3 | Describe a mission in natural language | Get a structured, schema-valid plan back |
-| US-4 | Edit the generated plan step by step | Manual edits persist, re-validated live |
-| US-5 | Run the mission and watch playback | Robot animates, metrics shown |
-| US-6 | See why a run failed, in plain language | Postmortem with diagnosis + suggested fix |
-| US-7 | Browse my past runs | List with status, ticks, distance |
-
-### Explicitly out of scope
-
-3D rendering · physics engine · inverse kinematics · robotic arms · multi-robot coordination · ROS/ROS2 · real hardware · real-time collaboration · mobile-optimised UI · path optimisation beyond A*.
-
-Write this list into the PRD. It's what stops you at 23:00 on a Tuesday.
-
----
+Stack rationale lives in [`.ai/tech-stack.md`](./tech-stack.md).
+Standing agent rules live in [`CLAUDE.md`](../CLAUDE.md) at the repo root.
 
 ## 2. Architecture
 
@@ -48,7 +27,7 @@ apps/web            Astro 5 + React islands, Tailwind, shadcn/ui
   src/pages         routes + server endpoints (/api/*)
   src/components    React islands (editor, playback, plan list)
   src/lib/sim       ← the simulation core, pure TypeScript, zero deps
-  src/lib/ai        OpenRouter client, prompts, Zod schemas, repair loop
+  src/lib/ai        Anthropic client, prompts, Zod schemas, repair loop
   src/db            Supabase client, typed queries
 supabase/migrations SQL migrations, RLS policies
 tests/unit          Vitest
@@ -139,7 +118,7 @@ Catches unknown station IDs, PLACE without a prior PICK, CHARGE at a non-charger
 - **Repair loop:** parse → on Zod failure, resend once with the error text appended, max 2 attempts, then surface a clean error to the user.
 - **Semantic gate:** run `validateMission()` on the parsed result. Schema-valid but nonsensical plans (place before pick) go back through the repair loop with the issue list.
 - **Persist** `model`, `prompt_version`, and token usage on the mission row. Cheap to add, and it's the kind of detail that reads as senior in a review.
-- Pin the model string in env (`OPENROUTER_MODEL`), use a cheap fast model — planning a 6-step mission is not a frontier-model task.
+- Pin the model string in env (`ANTHROPIC_MODEL`), use a small fast model — planning a 6-step mission is not a frontier-model task.
 
 ### 4.2 Postmortem — failed run → explanation
 
@@ -209,7 +188,7 @@ GitHub Actions:
 - **main:** the above, then deploy to Vercel
 - Supabase migrations committed in-repo, applied via CLI step
 
-Secrets: `OPENROUTER_API_KEY`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
+Secrets: `ANTHROPIC_API_KEY`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
 
 ---
 

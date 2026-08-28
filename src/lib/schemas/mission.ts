@@ -155,3 +155,81 @@ export type SimMissionMatchesSchema = Expect<Mission extends MissionInput ? true
  */
 export type PersistedRunFields = Omit<RunResult, 'frames'>;
 export type RunRecordHasNoFrames = Expect<'frames' extends keyof RunRecord ? false : true>;
+
+// ---------------------------------------------------------------------------
+// M5 — the planner
+// ---------------------------------------------------------------------------
+
+/**
+ * Everything below is deliberately in this module rather than `src/lib/ai`.
+ *
+ * `src/lib/ai/**` is server-only — it reads `ANTHROPIC_API_KEY` — and a unit
+ * test enforces that no component or page imports from it. The brief cap, the
+ * step cap, and the planner's error codes are all things the *browser* needs
+ * (a character counter, a disabled button, one error message per case), so they
+ * live here where both sides can reach them.
+ */
+
+/** Hard cap on a brief, enforced in the textarea and again on the server. */
+export const BRIEF_MAX_CHARS = 2000;
+
+/**
+ * Longest plan the planner will accept.
+ *
+ * A 40-step plan on a 20×20 grid is already far past anything a demo needs; a
+ * model that emits more has misunderstood the brief, and running it would just
+ * burn a battery to no purpose.
+ */
+export const MAX_PLAN_STEPS = 40;
+
+export const BriefSchema = z.string().trim().min(1).max(BRIEF_MAX_CHARS);
+
+export const MissionNameSchema = z.string().trim().min(1).max(120);
+
+/** POST /api/missions/generate */
+export const GenerateMissionSchema = z.object({
+  layoutId: z.uuid(),
+  brief: BriefSchema,
+});
+
+/**
+ * A plan with the step cap applied.
+ *
+ * Separate from `MissionSchema` on purpose: the cap is a product guard, not a
+ * property of the type, and `simulate()` runs a 400-step plan perfectly well.
+ * Anything reading a *stored* plan keeps using the uncapped schema so a row
+ * written before the cap existed still loads.
+ */
+export const BoundedMissionSchema = MissionSchema.refine(
+  (mission) => mission.steps.length <= MAX_PLAN_STEPS,
+  { message: `A plan may have at most ${MAX_PLAN_STEPS} steps.` },
+);
+
+/** PUT /api/missions/:id — the plan editor's save. */
+export const UpdateMissionSchema = z.object({
+  name: MissionNameSchema,
+  plan: BoundedMissionSchema,
+});
+
+/**
+ * Every way the planner can fail, as the browser sees it.
+ *
+ * The UI renders a different message per code — "the model was slow" and "your
+ * brief produced a plan we could not validate" call for different next steps,
+ * and collapsing them into one "something went wrong" would hide that.
+ */
+export const PLANNER_ERROR_CODES = [
+  'TIMEOUT',
+  'RATE_LIMITED',
+  'PROVIDER_ERROR',
+  'INVALID_OUTPUT',
+] as const;
+
+export const PlannerErrorCodeSchema = z.enum(PLANNER_ERROR_CODES);
+
+/** How many AI generations one user gets per rolling hour. */
+export const AI_GENERATIONS_PER_HOUR = 20;
+
+export type GenerateMissionInput = z.infer<typeof GenerateMissionSchema>;
+export type UpdateMissionInput = z.infer<typeof UpdateMissionSchema>;
+export type PlannerErrorCode = z.infer<typeof PlannerErrorCodeSchema>;

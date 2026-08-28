@@ -1,0 +1,58 @@
+---
+import { MissionEditor } from '../../../components/mission/MissionEditor';
+import Layout from '../../../layouts/Layout.astro';
+import { isRunId, loadLayout, loadMission } from '../../../lib/runs/run-api';
+
+export const prerender = false;
+
+const { supabase, user } = Astro.locals;
+
+if (!user) return Astro.redirect('/login', 302);
+
+// A malformed id cannot name a row, and querying with it would raise a Postgres
+// uuid syntax error rather than a clean miss.
+if (!isRunId(Astro.params.id)) {
+  return new Response('Mission not found', { status: 404 });
+}
+
+// Read server-side so the plan is in the first paint. Mutations go through
+// /api/missions/:id. No user filter: the select policies scope these already.
+const mission = await loadMission(supabase, Astro.params.id);
+
+// Another user's mission is invisible under RLS, so it arrives here as no row —
+// and leaves as 404, never 403. Nothing confirms the id exists.
+if (mission === null) {
+  return new Response('Mission not found', { status: 404 });
+}
+
+const layout = await loadLayout(supabase, mission.layoutId);
+
+// A mission whose layout is unreadable is as good as absent — same answer.
+if (layout === null) {
+  return new Response('Mission not found', { status: 404 });
+}
+---
+
+<Layout title={`${mission.name} — Robot Mission Studio`}>
+  <main class="mx-auto flex min-h-full max-w-3xl flex-col gap-6 px-6 py-12">
+    <div class="flex items-baseline justify-between">
+      <a href={`/app/layouts/${layout.id}`} class="text-sm text-cyan-400 underline">
+        &larr; {layout.name}
+      </a>
+
+      <form method="post" action="/logout">
+        <button type="submit" class="rounded bg-slate-700 px-2 py-1 text-xs">Log out</button>
+      </form>
+    </div>
+
+    <h1 class="text-2xl font-semibold tracking-tight">Edit plan</h1>
+
+    <MissionEditor
+      mission={mission}
+      layout={layout.layout}
+      layoutId={layout.id}
+      layoutName={layout.name}
+      client:load
+    />
+  </main>
+</Layout>

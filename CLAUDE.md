@@ -29,7 +29,7 @@ Capstone project, hard deadline 16.09.2026, ship target 15.09. Scope discipline 
 - Discriminated unions over boolean flags. `Step` is discriminated on `op`.
 - Errors: return typed results from the sim core (`RunResult.failure`); throw only for programmer error.
 - Tests colocated by concern: `tests/unit/sim/*.test.ts`, golden fixtures in `tests/fixtures/`.
-- Server-only secrets (`SUPABASE_SERVICE_ROLE_KEY`, `OPENROUTER_API_KEY`) are never imported into anything that ships to the browser.
+- Server-only secrets (`SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY`) are never imported into anything that ships to the browser.
 
 ## Commands
 
