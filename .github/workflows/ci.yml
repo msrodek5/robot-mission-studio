@@ -92,8 +92,12 @@ jobs:
         # `always()` so the numbers are still reported when a step above failed —
         # that is when they are most useful. This step cannot rescue the job: the
         # failure has already been recorded.
+        #
+        # `tee` rather than a plain redirect, because the rendered summary is not
+        # readable through the REST API — only in the web UI. Echoing it to the
+        # log means the numbers are greppable from `gh run view --log`.
         if: always()
-        run: node scripts/ci-summary.mjs >> "$GITHUB_STEP_SUMMARY"
+        run: node scripts/ci-summary.mjs | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Upload Playwright report
         if: always()
