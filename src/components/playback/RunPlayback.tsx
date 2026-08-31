@@ -426,6 +426,11 @@ function StepList({
             <li
               key={stepIndex}
               aria-current={isCurrent ? 'step' : undefined}
+              // The failing step is otherwise distinguished by colour alone,
+              // which nothing but an eye can read. The E2E suite asserts on this
+              // rather than on a Tailwind class.
+              data-step-index={stepIndex}
+              data-failing={isFailing ? 'true' : undefined}
               className={[
                 'flex gap-2 rounded border px-2 py-1 text-sm',
                 isFailing

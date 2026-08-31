@@ -14,6 +14,8 @@
     "test:rls": "vitest run --config vitest.rls.config.ts",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "e2e:serve": "node tests/e2e/support/serve-build.mjs",
+    "lint": "node scripts/lint-rules.mjs",
     "astro": "astro"
   },
   "dependencies": {
@@ -37,7 +39,9 @@
   "private": true,
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
+    "@playwright/test": "^1.62.1",
     "@types/node": "^26.3.0",
+    "@vitest/coverage-v8": "^4.1.11",
     "supabase": "^2.115.0",
     "typescript": "^6.0.3",
     "vitest": "^4.1.11"

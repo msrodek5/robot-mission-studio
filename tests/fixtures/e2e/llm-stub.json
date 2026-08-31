@@ -1,0 +1,15 @@
+{
+  "model": "stub-planner-1",
+  "planner": {
+    "defaultItem": "demo-crate"
+  },
+  "postmortem": {
+    "diagnosis": "The plan drives the robot to a shelf and then asks it to charge there. Only a charger can charge, so the run stops at that step with WRONG_STATION_KIND before any battery is added.",
+    "suggestedEdits": [
+      {
+        "stepIndex": 0,
+        "change": "Send the robot to a charger station instead of the shelf, then charge there."
+      }
+    ]
+  }
+}
