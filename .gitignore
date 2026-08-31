@@ -31,6 +31,14 @@ pnpm-debug.log*
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+# storage state for the two E2E users: real session cookies, never committed
+tests/e2e/.auth/
+
+# coverage
+/coverage/
+
+# vitest json report, read by scripts/ci-summary.mjs
+/reports/
 
 # vercel link writes .env.local (OIDC token)
 .env.local

@@ -4,42 +4,130 @@ on:
   push:
     branches: [main]
   pull_request:
+    branches: [main]
 
-# Deploys are handled by Vercel's Git integration (preview per PR, production
-# on main). This workflow is the quality gate that must pass alongside it.
+# The E2E suite drives two fixed accounts (`test_e2e_a@…`, `test_e2e_b@…`) on a
+# shared Supabase test project, and its teardown deletes them. Two runs at once
+# would delete each other's users mid-test, so runs are serialised rather than
+# cancelled — a queued run still has to pass before anything merges.
+concurrency:
+  group: ci-shared-test-users
+  cancel-in-progress: false
+
+# Deploys are handled by Vercel's Git integration (preview per PR, production on
+# main). This workflow is the quality gate that must pass alongside it.
+#
+# One job, in order, no `continue-on-error` anywhere: a red step is a red run.
 jobs:
   verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    # Job-wide, because `astro check`, `astro build`, and the Playwright web
+    # server all read them. `PUBLIC_*` are inlined into the client bundle at
+    # build time, so they have to exist for the build and not only at runtime.
+    env:
+      PUBLIC_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+      PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+      # Server-only, and used by the suite for exactly two things: creating the
+      # two test users and deleting them again. Never by an assertion — that
+      # would bypass RLS and prove nothing.
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
+      # Deliberately a dummy. Every model call in the suite is answered by
+      # `tests/e2e/support/anthropic-stub.mjs`, but the SDK refuses to construct
+      # a client without a key, so the app needs one to boot.
+      ANTHROPIC_API_KEY: ${{ secrets.E2E_ANTHROPIC_API_KEY }}
+
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          # Matches the Vercel serverless runtime.
+          # `.nvmrc` is 24, matching the Vercel serverless runtime. Astro 7
+          # requires >= 22.12, so Node 20 cannot install this project at all.
           node-version-file: .nvmrc
           cache: npm
+
+      - name: Check required secrets
+        # Failing here costs ten seconds. Without it, a missing secret surfaces
+        # four minutes later as a Playwright web-server timeout, which reads
+        # like a broken app.
+        run: |
+          missing=0
+          for name in PUBLIC_SUPABASE_URL PUBLIC_SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY ANTHROPIC_API_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Repository secret for $name is not set."
+              missing=1
+            fi
+          done
+          exit $missing
 
       - run: npm ci
 
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Unit tests
-        run: npm test
+      - name: Lint
+        run: npm run lint
+
+      - name: Unit tests with coverage
+        # The json reporter feeds `scripts/ci-summary.mjs`; the default reporter
+        # keeps the log readable for a human reading the failure.
+        #
+        # `reports/`, deliberately not `test-results/`: Playwright empties its
+        # output directory at the start of every run, which silently deleted this
+        # file before the summary step could read it.
+        run: npx vitest run --coverage --reporter=default --reporter=json --outputFile.json=reports/unit.json
 
       - name: Build
+        # Redundant with the Playwright web server, which builds again — and
+        # worth the twenty seconds. M0's one rule is that the deploy never
+        # silently breaks, and a broken build should say so here rather than as a
+        # web-server startup failure.
         run: npm run build
 
-  # Enabled in M7, once the Playwright suite exists.
-  # e2e:
-  #   needs: verify
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: actions/setup-node@v4
-  #       with:
-  #         node-version-file: .nvmrc
-  #         cache: npm
-  #     - run: npm ci
-  #     - run: npx playwright install --with-deps chromium
-  #     - run: npm run test:e2e
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E tests
+        run: npx playwright test
+
+      - name: Job summary
+        # `always()` so the numbers are still reported when a step above failed —
+        # that is when they are most useful. This step cannot rescue the job: the
+        # failure has already been recorded.
+        #
+        # `tee` rather than a plain redirect, because the rendered summary is not
+        # readable through the REST API — only in the web UI. Echoing it to the
+        # log means the numbers are greppable from `gh run view --log`.
+        if: always()
+        run: node scripts/ci-summary.mjs | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 30
+          if-no-files-found: warn
+
+      - name: Upload Playwright traces and screenshots
+        # Only when something failed. On a green run these are empty, and the
+        # HTML report above already embeds every attachment it needs.
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 30
+          if-no-files-found: ignore

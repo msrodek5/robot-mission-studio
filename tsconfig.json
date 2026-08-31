@@ -5,7 +5,11 @@
     "**/*"
   ],
   "exclude": [
-    "dist"
+    "dist",
+    ".vercel",
+    "coverage",
+    "test-results",
+    "playwright-report"
   ],
   "compilerOptions": {
     "jsx": "react-jsx",
