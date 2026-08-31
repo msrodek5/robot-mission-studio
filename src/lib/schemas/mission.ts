@@ -98,13 +98,88 @@ export const RunRecordSchema = z.object({
   createdAt: z.string(),
 });
 
-/** What `GET /api/runs/:id` returns: everything playback needs, in one trip. */
+// ---------------------------------------------------------------------------
+// M6 — the postmortem
+// ---------------------------------------------------------------------------
+
+/**
+ * Longest diagnosis the postmortem will accept.
+ *
+ * Two or three sentences is the target and roughly 300 characters is what that
+ * costs; the cap is headroom so a model that decides to write an essay is
+ * rejected and repaired rather than filling a card nobody reads. It is also in
+ * the tool's JSON Schema as `maxLength`, so it is guidance before it is a gate.
+ */
+export const DIAGNOSIS_MAX_CHARS = 1200;
+
+/** Longest single suggested edit. One instruction, not a paragraph. */
+export const CHANGE_MAX_CHARS = 300;
+
+/**
+ * Most suggested edits the postmortem will accept.
+ *
+ * A run fails at exactly one step. More than a handful of proposed edits means
+ * the model has started rewriting the plan rather than explaining the failure,
+ * which is US-3's job and not this one's.
+ */
+export const MAX_SUGGESTED_EDITS = 6;
+
+/**
+ * One concrete change, anchored to a step.
+ *
+ * `stepIndex` is 0-based and must name a step that exists — that is checked
+ * against the plan in `explain-failure.ts`, not here, because the schema has no
+ * idea how long the plan is. An unanchored suggestion ("charge more often") is
+ * exactly the vague advice US-6 exists to replace, so the index is required.
+ */
+export const SuggestedEditSchema = z.object({
+  stepIndex: z.number().int().min(0),
+  change: z.string().trim().min(1).max(CHANGE_MAX_CHARS),
+});
+
+/**
+ * What the model emits. This is the shape the `emit_postmortem` tool schema is
+ * derived from, so it holds nothing the model does not produce — provenance
+ * lives on `PostmortemRecordSchema` below.
+ *
+ * `suggestedEdits` may be empty and that is deliberate: a run that failed with
+ * `UNREACHABLE` because the target is walled in has no step-level fix, and
+ * forcing a suggestion there would only produce an invented one.
+ */
+export const PostmortemSchema = z.object({
+  diagnosis: z.string().trim().min(1).max(DIAGNOSIS_MAX_CHARS),
+  suggestedEdits: z.array(SuggestedEditSchema).max(MAX_SUGGESTED_EDITS),
+});
+
+/**
+ * The postmortem as stored on the run row, and as the browser reads it back.
+ *
+ * `model`, `promptVersion`, and `createdAt` ride along for the same reason they
+ * ride along on a generated mission: six weeks from now, a diagnosis that reads
+ * oddly has to be traceable to the prompt that wrote it. Coming off a jsonb
+ * column this is untrusted input like anything else, so it is parsed.
+ */
+export const PostmortemRecordSchema = PostmortemSchema.extend({
+  model: z.string(),
+  promptVersion: z.string(),
+  createdAt: z.string(),
+});
+
+/**
+ * What `GET /api/runs/:id` returns: everything playback needs, in one trip.
+ *
+ * `postmortem` is a sibling of `run` rather than a field on `RunRecordSchema`
+ * because the run *history* list also returns `RunRecord`s, and shipping a
+ * paragraph of diagnosis per row to render a table of ticks and timestamps
+ * would be waste. The detail response is the one place it is wanted.
+ */
 export const RunDetailSchema = z.object({
   run: RunRecordSchema,
   mission: MissionRecordSchema,
   layout: LayoutSchema,
   layoutId: z.string(),
   layoutName: z.string(),
+  postmortem: PostmortemRecordSchema.nullable(),
 });
 
 /** POST /api/runs — the authoritative primitive. */
@@ -128,6 +203,9 @@ export type MissionRecord = z.infer<typeof MissionRecordSchema>;
 export type MissionSource = z.infer<typeof MissionSourceSchema>;
 export type RunRecord = z.infer<typeof RunRecordSchema>;
 export type RunDetail = z.infer<typeof RunDetailSchema>;
+export type SuggestedEdit = z.infer<typeof SuggestedEditSchema>;
+export type PostmortemInput = z.infer<typeof PostmortemSchema>;
+export type PostmortemRecord = z.infer<typeof PostmortemRecordSchema>;
 export type CreateRunInput = z.infer<typeof CreateRunSchema>;
 export type CreateDemoRunInput = z.infer<typeof CreateDemoRunSchema>;
 export type DemoKind = (typeof DEMO_KINDS)[number];

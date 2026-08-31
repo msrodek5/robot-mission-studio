@@ -1,0 +1,28 @@
+{
+  "id": "msg_test",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-haiku-4-5",
+  "content": [
+    {
+      "type": "tool_use",
+      "id": "toolu_pm",
+      "name": "emit_postmortem",
+      "input": {
+        "diagnosis": "The gripper was already carrying the bolt when the plan asked for a second pick.",
+        "suggestedEdits": [
+          {
+            "stepIndex": 9,
+            "change": "Insert a PLACE at Dock before this step."
+          }
+        ]
+      }
+    }
+  ],
+  "stop_reason": "tool_use",
+  "stop_sequence": null,
+  "usage": {
+    "input_tokens": 640,
+    "output_tokens": 56
+  }
+}

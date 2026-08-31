@@ -4,6 +4,12 @@ import type { MessageCreator } from '../../../src/lib/ai/client';
 import cleanValid from '../../fixtures/llm/clean-valid.json';
 import noPlan from '../../fixtures/llm/no-plan.json';
 import overStepCap from '../../fixtures/llm/over-step-cap.json';
+import postmortemClean from '../../fixtures/llm/postmortem-clean.json';
+import postmortemNoEdits from '../../fixtures/llm/postmortem-no-edits.json';
+import postmortemNoTool from '../../fixtures/llm/postmortem-no-tool.json';
+import postmortemOutOfRange from '../../fixtures/llm/postmortem-out-of-range.json';
+import postmortemSchemaInvalid from '../../fixtures/llm/postmortem-schema-invalid.json';
+import postmortemTextFallback from '../../fixtures/llm/postmortem-text-fallback.json';
 import schemaInvalid from '../../fixtures/llm/schema-invalid.json';
 import semanticInvalid from '../../fixtures/llm/semantic-invalid-place-before-pick.json';
 import textFallback from '../../fixtures/llm/text-fallback.json';
@@ -28,6 +34,22 @@ export const FIXTURES = {
   unknownStation: unknownStation as unknown as Anthropic.Message,
   overStepCap: overStepCap as unknown as Anthropic.Message,
   noPlan: noPlan as unknown as Anthropic.Message,
+};
+
+/**
+ * The postmortem's responses, same idea and the same shapes.
+ *
+ * Kept in a separate map rather than merged into `FIXTURES` so a test that
+ * replays a mission fixture into `explainFailure` — or the reverse — reads as
+ * obviously wrong at the call site.
+ */
+export const POSTMORTEM_FIXTURES = {
+  clean: postmortemClean as unknown as Anthropic.Message,
+  noEdits: postmortemNoEdits as unknown as Anthropic.Message,
+  schemaInvalid: postmortemSchemaInvalid as unknown as Anthropic.Message,
+  outOfRange: postmortemOutOfRange as unknown as Anthropic.Message,
+  textFallback: postmortemTextFallback as unknown as Anthropic.Message,
+  noTool: postmortemNoTool as unknown as Anthropic.Message,
 };
 
 export type Recorder = {

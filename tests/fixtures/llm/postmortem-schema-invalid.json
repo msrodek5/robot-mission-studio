@@ -1,0 +1,27 @@
+{
+  "id": "msg_test",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-haiku-4-5",
+  "content": [
+    {
+      "type": "tool_use",
+      "id": "toolu_pm",
+      "name": "emit_postmortem",
+      "input": {
+        "suggestedEdits": [
+          {
+            "stepIndex": "the second pick",
+            "change": "remove it"
+          }
+        ]
+      }
+    }
+  ],
+  "stop_reason": "tool_use",
+  "stop_sequence": null,
+  "usage": {
+    "input_tokens": 640,
+    "output_tokens": 40
+  }
+}

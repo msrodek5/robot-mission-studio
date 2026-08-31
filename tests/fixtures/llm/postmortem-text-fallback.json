@@ -1,0 +1,18 @@
+{
+  "id": "msg_test",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-haiku-4-5",
+  "content": [
+    {
+      "type": "text",
+      "text": "Here is the postmortem:\n\n```json\n{\n  \"diagnosis\": \"The robot was already holding the bolt, so the second pick at Shelf had nowhere to go.\",\n  \"suggestedEdits\": [\n    {\n      \"stepIndex\": 2,\n      \"change\": \"Remove this PICK, or run it after the bolt is placed at Dock.\"\n    }\n  ]\n}\n```\n"
+    }
+  ],
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "usage": {
+    "input_tokens": 640,
+    "output_tokens": 96
+  }
+}

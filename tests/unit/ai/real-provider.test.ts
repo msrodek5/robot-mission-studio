@@ -3,9 +3,10 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { anthropicMessageCreator, plannerModel } from '../../../src/lib/ai/client';
+import { explainFailure } from '../../../src/lib/ai/explain-failure';
 import { planMission } from '../../../src/lib/ai/plan-mission';
 import { hasBlockingIssues, simulate, validateMission } from '../../../src/lib/sim';
-import type { Layout } from '../../../src/lib/sim';
+import type { Layout, Mission } from '../../../src/lib/sim';
 
 /**
  * The one test that actually calls Anthropic. Run it by hand:
@@ -126,6 +127,72 @@ describe.skipIf(!ENABLED)('the real Anthropic API', () => {
       expect(run.failure).toBeUndefined();
       expect(run.status).toBe('success');
       expect(run.batteryEnd).toBeGreaterThan(0);
+    },
+    // Three model calls at 20s each, plus slack.
+    90_000,
+  );
+});
+
+/**
+ * A plan that fails for a reason only the trace explains.
+ *
+ * Two picks in a row: the gripper is full at step 2 because step 1 filled it.
+ * Chosen because the failure object alone (`GRIPPER_FULL` at step 2) does not
+ * contain the cause — a postmortem that only restates the code will not mention
+ * the crate it was already holding, and the assertions below will notice.
+ */
+const DOUBLE_PICK: Mission = {
+  steps: [
+    { op: 'MOVE_TO', stationId: 'shelf-a' },
+    { op: 'PICK', stationId: 'shelf-a', item: 'crate' },
+    { op: 'PICK', stationId: 'shelf-b', item: 'pallet' },
+    { op: 'PLACE', stationId: 'dock-main', item: 'crate' },
+  ],
+};
+
+describe.skipIf(!ENABLED)('the real Anthropic API — postmortem', () => {
+  it(
+    'turns a failed run into an explanation with usable step anchors',
+    async () => {
+      loadEnvFile();
+
+      const create = anthropicMessageCreator();
+      expect(create, 'ANTHROPIC_API_KEY is not set').not.toBeNull();
+      if (create === null) return;
+
+      // The trace is real: the same `simulate()` the server runs behind
+      // POST /api/runs produces the failure and the log this is asked to explain.
+      const run = simulate(WAREHOUSE, DOUBLE_PICK, { seed: 0 });
+
+      expect(run.status).toBe('failed');
+      expect(run.failure?.code).toBe('GRIPPER_FULL');
+      if (run.failure === undefined) return;
+
+      const result = await explainFailure({
+        layout: WAREHOUSE,
+        mission: DOUBLE_PICK,
+        failure: run.failure,
+        log: run.log,
+        create,
+      });
+
+      // eslint-disable-next-line no-console -- this test exists to be watched
+      console.log(JSON.stringify({ model: plannerModel(), result }, null, 2));
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+
+      // Every anchor is a step that exists. This is the gate the mocked tests
+      // exercise with a fixture; here it is checked against a live model.
+      for (const edit of result.postmortem.suggestedEdits) {
+        expect(edit.stepIndex).toBeGreaterThanOrEqual(0);
+        expect(edit.stepIndex).toBeLessThan(DOUBLE_PICK.steps.length);
+      }
+
+      // US-6: understandable without reading a trace. A diagnosis that just
+      // echoes the code back is the failure mode, so the code must not appear.
+      expect(result.postmortem.diagnosis).not.toContain('GRIPPER_FULL');
+      expect(result.postmortem.diagnosis.length).toBeGreaterThan(40);
     },
     // Three model calls at 20s each, plus slack.
     90_000,

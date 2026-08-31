@@ -1,0 +1,32 @@
+{
+  "id": "msg_test",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-haiku-4-5",
+  "content": [
+    {
+      "type": "tool_use",
+      "id": "toolu_pm",
+      "name": "emit_postmortem",
+      "input": {
+        "diagnosis": "The robot picked up the bolt at Shelf and then, still holding it, tried to pick up the nut from the same shelf. It can only carry one thing at a time, so the second pick had nowhere to go and the run stopped there.",
+        "suggestedEdits": [
+          {
+            "stepIndex": 2,
+            "change": "Drop this second PICK, or move it after the bolt has been placed at Dock."
+          },
+          {
+            "stepIndex": 3,
+            "change": "Place the bolt at Dock before collecting anything else."
+          }
+        ]
+      }
+    }
+  ],
+  "stop_reason": "tool_use",
+  "stop_sequence": null,
+  "usage": {
+    "input_tokens": 640,
+    "output_tokens": 128
+  }
+}

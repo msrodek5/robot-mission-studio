@@ -71,6 +71,18 @@ describe('server-only AI module', () => {
     expect(generate).toMatch(AI_IMPORT);
   });
 
+  it('exempts a nested endpoint too, and scans it', () => {
+    // The postmortem endpoint lives one directory deeper, under `[id]/`. Both
+    // halves are worth pinning: the walker has to find it, and `isExempt` has to
+    // still recognise it — a prefix check that only matched the top level would
+    // turn this legitimate import into a suite-wide failure.
+    const endpoint = join(ROOT, 'src/pages/api/runs/[id]/postmortem.ts');
+
+    expect(files).toContain(endpoint);
+    expect(isExempt(endpoint)).toBe(true);
+    expect(readFileSync(endpoint, 'utf8')).toMatch(/lib\/ai\//);
+  });
+
   it('keeps the browser-facing constants out of the AI module', () => {
     // The brief cap and the error codes are needed by the textarea and the
     // error card, so they live in schemas/. If they migrate into lib/ai, the

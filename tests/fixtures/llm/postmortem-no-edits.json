@@ -1,0 +1,23 @@
+{
+  "id": "msg_test",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-haiku-4-5",
+  "content": [
+    {
+      "type": "tool_use",
+      "id": "toolu_pm",
+      "name": "emit_postmortem",
+      "input": {
+        "diagnosis": "Shelf is walled off from where the robot started, so there is no route to it at all. No change to the step list will help; the layout needs a gap in the wall.",
+        "suggestedEdits": []
+      }
+    }
+  ],
+  "stop_reason": "tool_use",
+  "stop_sequence": null,
+  "usage": {
+    "input_tokens": 640,
+    "output_tokens": 64
+  }
+}

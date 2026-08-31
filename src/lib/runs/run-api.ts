@@ -21,11 +21,12 @@ import {
   toLayoutRecord,
 } from '../layout/layout-api';
 import type { Session } from '../layout/layout-api';
-import { MissionSchema } from '../schemas/mission';
+import { MissionSchema, PostmortemRecordSchema } from '../schemas/mission';
 import type {
   MissionInput,
   MissionRecord,
   MissionSource,
+  PostmortemRecord,
   RunDetail,
   RunRecord,
 } from '../schemas/mission';
@@ -36,6 +37,15 @@ import type { Layout, Mission, RunResult } from '../sim';
 /** Columns every run handler selects. Note the absence of `frames`. */
 export const RUN_COLUMNS =
   'id, mission_id, seed, status, ticks, distance, battery_end, failure, log, created_at';
+
+/**
+ * The detail columns: the above plus the cached postmortem.
+ *
+ * Split from `RUN_COLUMNS` on purpose. The run *history* list selects the narrow
+ * set, and a history table of ticks and timestamps has no use for a paragraph of
+ * diagnosis per row. Only the single-run reads pay for it.
+ */
+export const RUN_DETAIL_COLUMNS = `${RUN_COLUMNS}, postmortem`;
 
 export const MISSION_COLUMNS = 'id, layout_id, name, source, plan, created_at';
 
@@ -94,6 +104,11 @@ const RunRowSchema = z.object({
   battery_end: z.coerce.number(),
   failure: z.unknown(),
   log: z.unknown(),
+  // Absent from a `RUN_COLUMNS` select and present from a `RUN_DETAIL_COLUMNS`
+  // one, so one row schema covers both queries rather than two that could drift
+  // apart. `.optional()` is doing real work here: a bare `z.unknown()` still
+  // requires the *key*, and every narrow select would fail to parse.
+  postmortem: z.unknown().optional(),
   created_at: z.string(),
 });
 
@@ -156,6 +171,23 @@ export function toMissionRecord(row: MissionRow): MissionRecord {
   };
 }
 
+/**
+ * The cached postmortem, or `null`.
+ *
+ * `null` covers three cases that all answer the same way — a successful run, a
+ * failed run nobody has asked about yet, and a row whose stored postmortem no
+ * longer parses. The third is why this is a `safeParse`: a jsonb blob written by
+ * an older `PROMPT_VERSION` should leave the run page loadable with an "explain
+ * this failure" button, not blank the screen.
+ */
+export function toPostmortemRecord(row: RunRow): PostmortemRecord | null {
+  if (row.postmortem === null || row.postmortem === undefined) return null;
+
+  const parsed = PostmortemRecordSchema.safeParse(row.postmortem);
+
+  return parsed.success ? parsed.data : null;
+}
+
 export function toRunRecord(row: RunRow): RunRecord {
   const failure = FailureRowSchema.safeParse(row.failure);
   const log = LogRowSchema.safeParse(row.log);
@@ -209,10 +241,28 @@ export async function loadLayout(
   return data ? toLayoutRecord(parseLayoutRow(data)) : null;
 }
 
-export async function loadRun(supabase: SupabaseClient, runId: string): Promise<RunRecord | null> {
-  const { data } = await supabase.from('runs').select(RUN_COLUMNS).eq('id', runId).maybeSingle();
+/**
+ * One run, with the cached postmortem that rides on the same row.
+ *
+ * Returned as a pair rather than folded into `RunRecord` because the postmortem
+ * is not part of what a run *is* — see the note on `RunDetailSchema`. One query
+ * either way, so the caller never pays for the trip it did not need.
+ */
+export async function loadRun(
+  supabase: SupabaseClient,
+  runId: string,
+): Promise<{ run: RunRecord; postmortem: PostmortemRecord | null } | null> {
+  const { data } = await supabase
+    .from('runs')
+    .select(RUN_DETAIL_COLUMNS)
+    .eq('id', runId)
+    .maybeSingle();
 
-  return data ? toRunRecord(parseRunRow(data)) : null;
+  if (!data) return null;
+
+  const row = parseRunRow(data);
+
+  return { run: toRunRecord(row), postmortem: toPostmortemRecord(row) };
 }
 
 /** Everything playback needs, in one trip: run, plan, and the grid it ran on. */
@@ -220,21 +270,22 @@ export async function loadRunDetail(
   supabase: SupabaseClient,
   runId: string,
 ): Promise<RunDetail | null> {
-  const run = await loadRun(supabase, runId);
-  if (run === null) return null;
+  const loaded = await loadRun(supabase, runId);
+  if (loaded === null) return null;
 
-  const mission = await loadMission(supabase, run.missionId);
+  const mission = await loadMission(supabase, loaded.run.missionId);
   if (mission === null) return null;
 
   const layout = await loadLayout(supabase, mission.layoutId);
   if (layout === null) return null;
 
   return {
-    run,
+    run: loaded.run,
     mission,
     layout: layout.layout,
     layoutId: layout.id,
     layoutName: layout.name,
+    postmortem: loaded.postmortem,
   };
 }
 
@@ -362,4 +413,53 @@ export async function createRun(
   if (error) return { error: errorResponse(500, error.message) };
 
   return { run: toRunRecord(parseRunRow(data)) };
+}
+
+// ---------------------------------------------------------------------------
+// The cached postmortem
+// ---------------------------------------------------------------------------
+
+/**
+ * Writes the postmortem, but only onto a run that does not have one.
+ *
+ * `.is('postmortem', null)` is the whole point of this function. Two tabs can
+ * both open a failed run, both read `postmortem: null`, and both call the model
+ * — the cache check in the endpoint cannot prevent that, because there is no
+ * lock between the read and the write. This makes the *write* the arbiter: the
+ * first update matches the filter and lands, the second matches nothing and
+ * comes back empty, and the loser reads the winner's row instead of overwriting
+ * it. Without the filter the two would race and the user could watch the
+ * diagnosis change under them.
+ *
+ * `null` therefore means "no row was updated", which is not an error: it is
+ * either the race above or a run this user cannot see. The caller re-reads to
+ * tell those apart — under RLS they are otherwise indistinguishable, and both
+ * have a correct answer that is not a 500.
+ */
+export async function savePostmortem(
+  session: Session,
+  runId: string,
+  record: PostmortemRecord,
+): Promise<{ postmortem: PostmortemRecord } | { error: Response } | null> {
+  const { data, error } = await session.supabase
+    .from('runs')
+    .update({ postmortem: record })
+    .eq('id', runId)
+    .is('postmortem', null)
+    .select(RUN_DETAIL_COLUMNS)
+    .maybeSingle();
+
+  if (error !== null) return { error: errorResponse(500, error.message) };
+  if (data === null) return null;
+
+  const saved = toPostmortemRecord(parseRunRow(data));
+
+  // The row came back, so the update landed. A postmortem that will not parse on
+  // the way out means the record and its schema have diverged — a programmer
+  // error, and one worth reporting rather than answering with a silent null.
+  if (saved === null) {
+    return { error: errorResponse(500, 'The postmortem was saved but could not be read back.') };
+  }
+
+  return { postmortem: saved };
 }

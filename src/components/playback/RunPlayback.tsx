@@ -4,10 +4,12 @@ import { GridView } from '../grid/GridView';
 import type { GridOverlay } from '../grid/GridView';
 import { RunDetailSchema } from '../../lib/schemas/mission';
 import type { RunDetail } from '../../lib/schemas/mission';
-import { findStation, simulate } from '../../lib/sim';
+import { simulate } from '../../lib/sim';
 import type { Frame, Layout, RunResult, Step } from '../../lib/sim';
+import { PostmortemCard } from './PostmortemCard';
 import { compareRun, traceUpTo } from './run-trace';
 import type { Divergence } from './run-trace';
+import { stepLabel } from './step-label';
 
 type Props = {
   runId: string;
@@ -231,6 +233,17 @@ function Player({ detail, result }: { detail: RunDetail; result: RunResult }) {
             Failed at step {detail.run.failure.stepIndex + 1}.
           </span>
         </Banner>
+      )}
+
+      {/* US-6. Only on a failed run: a successful one has nothing to diagnose,
+          and the endpoint answers 409 if asked anyway. */}
+      {detail.run.failure !== null && (
+        <PostmortemCard
+          runId={detail.run.id}
+          cached={detail.postmortem}
+          steps={detail.mission.plan.steps}
+          layout={detail.layout}
+        />
       )}
 
       <div className="flex flex-wrap items-start gap-8">
@@ -466,32 +479,6 @@ function Banner({ tone, children }: { tone: 'ok' | 'error'; children: React.Reac
       {children}
     </p>
   );
-}
-
-/**
- * Steps as a person reads them: station names, not ids.
- *
- * `describeStep` in the sim core prints ids, which is right for a log line and
- * wrong for a panel the user is watching. An id with no matching station is
- * shown verbatim — that is a real plan the simulator will fail with
- * `UNKNOWN_STATION`, and hiding it would make the failure unexplainable.
- */
-function stepLabel(step: Step, layout: Layout): string {
-  if (step.op === 'WAIT') return `WAIT ${step.ticks} tick(s)`;
-
-  const station = findStation(layout, step.stationId);
-  const where = station ? (station.name || 'unnamed') : `${step.stationId} (unknown)`;
-
-  switch (step.op) {
-    case 'MOVE_TO':
-      return `MOVE_TO ${where}`;
-    case 'PICK':
-      return `PICK “${step.item}” at ${where}`;
-    case 'PLACE':
-      return `PLACE “${step.item}” at ${where}`;
-    case 'CHARGE':
-      return `CHARGE at ${where} to ${step.toPercent}%`;
-  }
 }
 
 async function messageFrom(response: Response): Promise<string> {

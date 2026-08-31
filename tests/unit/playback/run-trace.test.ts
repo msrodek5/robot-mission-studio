@@ -39,6 +39,9 @@ function detailFor(result: RunResult, overrides: Partial<RunDetail['run']> = {})
     layout: { width: 5, height: 5, obstacles: [], stations: [], start: { x: 0, y: 0 } },
     layoutId: 'layout-1',
     layoutName: 'Layout',
+    // The determinism check is about the run row, not the postmortem — these
+    // fixtures never carry one.
+    postmortem: null,
   };
 }
 
