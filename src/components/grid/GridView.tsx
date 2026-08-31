@@ -70,7 +70,12 @@ export function GridView({
 
   return (
     <div
-      className="inline-grid gap-px bg-slate-700 p-px"
+      // `self-start` is load-bearing, not decoration. Both call sites put this
+      // inside a flex column, which blockifies `inline-grid` and stretches it to
+      // the container's width — so the `bg-slate-700` gap colour spilled out as
+      // a grey slab to the right of the last column on any grid narrower than
+      // its container, which is most of them.
+      className="inline-grid gap-px self-start bg-slate-700 p-px"
       style={{ gridTemplateColumns: `repeat(${layout.width}, 1.75rem)` }}
       role="grid"
       aria-label={label}

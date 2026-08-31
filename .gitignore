@@ -40,6 +40,9 @@ tests/e2e/.auth/
 # vitest json report, read by scripts/ci-summary.mjs
 /reports/
 
+# intermediate frames for the README GIF; scripts/screenshots.mjs cleans up
+docs/screenshots/.frames/
+
 # vercel link writes .env.local (OIDC token)
 .env.local
 !.env.example

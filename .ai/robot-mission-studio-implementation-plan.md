@@ -288,8 +288,9 @@ the outcome they were designed for.
 - [x] GitHub Actions CI/CD — typecheck → lint → vitest+coverage → build → Playwright
 - [x] Deployed, publicly reachable URL — <https://robot-mission-studio.vercel.app>
 - [x] README with the determinism story
-- [ ] Screenshot/GIF in the README — **still a `TODO` marker.** The only
-      outstanding item, and it needs a human with a screen recorder
+- [x] Screenshot/GIF in the README — four captures and a playback GIF, taken
+      against the production build with real model calls, regenerable with
+      `node scripts/screenshots.mjs`
 
 ---
 
@@ -426,16 +427,38 @@ which `vitest run --coverage` cannot run non-interactively and the CI job summar
 has no sim-core coverage figure to report. `src/lib/sim` still has zero
 dependencies, as it always will.
 
-### 13.9 One production file was touched during freeze
+### 13.9 Two production files were touched during freeze
 
 `src/components/playback/RunPlayback.tsx` gained `data-step-index` and
 `data-failing` attributes on the playback step list. The failing step was
 distinguished by colour alone, which no test — and no screen reader — can read.
 Two inert attributes, no behaviour change, and the alternative was asserting on a
-Tailwind class name. Flagged here because "no changes outside the milestone" was
-the rule and this is the exception.
+Tailwind class name.
 
-### 13.10 The section 2 architecture sketch was never accurate
+`src/components/grid/GridView.tsx` gained `self-start`, fixing the grey slab
+described in 13.10.
+
+Both flagged here because "no changes outside the milestone" was the rule and
+these are the exceptions.
+
+### 13.10 The screenshots found a bug the tests could not
+
+Shooting the README images exposed a cosmetic defect that had been in `GridView`
+since M3: the grid is `inline-grid`, both call sites put it inside a flex column,
+and a flex item gets blockified and stretched — so the `bg-slate-700` gap colour
+spilled out as a grey slab to the right of the last column on every grid narrower
+than its container, which is most of them. Playback happened to escape it,
+because its column sits in an `items-start` row and therefore shrinks to the
+grid's own width.
+
+Fixed with `self-start`, one class. Worth recording for what it says about the
+test suite: four E2E flows address that grid by accessible name and assert on its
+contents, and not one of them could see this, because the defect is in geometry
+rather than in the DOM. A screenshot found in ten seconds what 308 unit tests and
+four browser flows could not, which is an argument for having images in the
+README beyond decoration.
+
+### 13.11 The section 2 architecture sketch was never accurate
 
 Left in place above rather than quietly corrected, because it is a useful record
 of what was guessed wrong at the start. Three things in it are false:
@@ -446,7 +469,7 @@ never installed. Tailwind utility classes turned out to be enough for a grid, a
 station table, and four buttons, and a component library would have been a
 dependency carrying a design system this app has no use for.
 
-### 13.11 Things that were planned and held
+### 13.12 Things that were planned and held
 
 Recorded because a deviations list that only lists misses reads as though nothing
 worked:
