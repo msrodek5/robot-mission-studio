@@ -11,13 +11,25 @@ failing step, the failure class, and asks a model to explain in plain language
 what went wrong and which steps to change. Draw a layout, plan a mission, watch
 it work — or watch it fail and find out why.
 
-<!-- TODO: replace with a real screenshot or GIF of the layout editor and a
-     playback run. Suggested: 10s GIF — draw two stations, generate a plan, run
-     it, scrub the timeline. -->
-
-> **TODO — screenshot/GIF goes here.**
+![A mission playing back: the robot routing around two walls to a shelf and on to
+the dock, with live tick, distance, battery and gripper readouts beside the
+plan](./docs/screenshots/playback.gif)
 
 **Live:** <https://robot-mission-studio.vercel.app>
+
+<table>
+<tr>
+<td width="50%"><a href="./docs/screenshots/01-layout-editor.png"><img src="./docs/screenshots/01-layout-editor.png" alt="The layout editor: a 14x10 grid with two obstacle walls, four stations, and a live validator reporting no issues"></a><br><strong>Draw the floor.</strong> Click cells to toggle obstacles, add stations, set the start. The validator runs on every keystroke.</td>
+<td width="50%"><a href="./docs/screenshots/03-plan-editor.png"><img src="./docs/screenshots/03-plan-editor.png" alt="The plan editor showing a six-step AI-generated mission, marked ready to run"></a><br><strong>Plan it in English.</strong> "Collect crate-a7 from Shelf A and deliver it to the Dock, then top the battery up at the Charger" became these six steps.</td>
+</tr>
+<tr>
+<td width="50%"><a href="./docs/screenshots/04-plan-editor-linter.png"><img src="./docs/screenshots/04-plan-editor-linter.png" alt="The plan editor after a PLACE was moved above its PICK: a GRIPPER_EMPTY error on that step, an ENDS_CARRYING warning, and the Run button disabled"></a><br><strong>The linter blocks the run, not the save.</strong> A <code>PLACE</code> moved above its <code>PICK</code> is caught on the step that caused it, and Run says why it is disabled.</td>
+<td width="50%"><a href="./docs/screenshots/08-failure-postmortem.png"><img src="./docs/screenshots/08-failure-postmortem.png" alt="A failed run: a WRONG_STATION_KIND banner, an AI diagnosis explaining that Shelf A is not a charger, and a suggested edit anchored to step 2"></a><br><strong>Failures explain themselves.</strong> <code>WRONG_STATION_KIND</code> at step 2, then a diagnosis and an anchored fix — generated once and cached on the run row.</td>
+</tr>
+</table>
+
+Every image above is a real capture against the production build, with real model
+calls. Regenerate them after a UI change with `node scripts/screenshots.mjs`.
 
 Capstone project for 10xDevs 3.0. Product definition in [`.ai/prd.md`](./.ai/prd.md),
 stack rationale in [`.ai/tech-stack.md`](./.ai/tech-stack.md), build order and
