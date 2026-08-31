@@ -8,7 +8,7 @@
  * separately from everything else rather than averaging the two into a figure
  * that tells you nothing about either.
  *
- * Reads `test-results/unit.json` (vitest's json reporter) and
+ * Reads `reports/unit.json` (vitest's json reporter) and
  * `coverage/coverage-summary.json` (the `json-summary` coverage reporter). Both
  * are produced by the `npx vitest run --coverage` step in `.github/workflows/ci.yml`.
  *
@@ -20,7 +20,13 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve, sep } from 'node:path';
 
-const UNIT_RESULTS = 'test-results/unit.json';
+/**
+ * Not under `test-results/`. Playwright empties its output directory when it
+ * starts, so a unit report written there is gone by the time the E2E step
+ * finishes — which showed up as "no report" in the job summary while the vitest
+ * log cheerfully said it had written one.
+ */
+const UNIT_RESULTS = 'reports/unit.json';
 const COVERAGE_SUMMARY = 'coverage/coverage-summary.json';
 
 /** Paths under this prefix are the sim core. Matched on both path separators. */

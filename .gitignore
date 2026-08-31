@@ -37,6 +37,9 @@ tests/e2e/.auth/
 # coverage
 /coverage/
 
+# vitest json report, read by scripts/ci-summary.mjs
+/reports/
+
 # vercel link writes .env.local (OIDC token)
 .env.local
 !.env.example

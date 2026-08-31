@@ -73,7 +73,11 @@ jobs:
       - name: Unit tests with coverage
         # The json reporter feeds `scripts/ci-summary.mjs`; the default reporter
         # keeps the log readable for a human reading the failure.
-        run: npx vitest run --coverage --reporter=default --reporter=json --outputFile.json=test-results/unit.json
+        #
+        # `reports/`, deliberately not `test-results/`: Playwright empties its
+        # output directory at the start of every run, which silently deleted this
+        # file before the summary step could read it.
+        run: npx vitest run --coverage --reporter=default --reporter=json --outputFile.json=reports/unit.json
 
       - name: Build
         # Redundant with the Playwright web server, which builds again — and
